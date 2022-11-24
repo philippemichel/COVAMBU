@@ -1,0 +1,110 @@
+---
+title: "COVAMBU"
+subtitle: "Plan d'analyse statistique"
+author: "Philippe MICHEL"
+date: today
+date-format: "DD MMMM YYYY"
+format: 
+  pdf:
+    code-link: true
+    pdf-engine: lualatex
+keep-tex: true
+number-sections: false
+toc: false
+lof: false
+lot: false
+mainfont: Faune
+mainfontoptions:
+  - Numbers=OldStyle
+  - Ligatures=TeX
+sansfont: Myriad Pro
+sansfontoptions:
+  - Ligatures=TeX
+mathfontoptions: 
+  - Numbers=Proportional
+fig-cap-location: bottom
+tbl-cap-location: top
+class: scrartcl
+classoption: [french]
+papersize: a4paper
+editor: source
+#cite-method: biblatex
+bibliography: stat.bib
+license: "CC BY-SA"
+---
+
+```{r setup, include= FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, cache = FALSE,
+# knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+#
+ fig.width = 7,
+ fig.asp = 0.8,
+ out.width = "100%"
+)
+```
+
+```{r info}
+rm(list=ls())
+library("baseph")
+library("tidyverse")
+library("kableExtra")
+# sessionInfo()
+```
+
+Ce document ne concerne que l'analyse statistique des données.
+
+Le risque $\alpha$ retenu sera de 0,05 & la puissance de 0,8.
+
+## Justification statistique du nombre de sujets
+
+Pour une étude observationnelle simple il n’y a pas moyen de calculer un nombre de sujets nécessaires. Néanmoins, pour un risque alpha de 0,05 & une marge d’erreur de 0,05 dans une grande population, un minimum de 190 cas utilisables est une approximation correcte. Sur une étude avec appel des patients donc un nombre de non réponses important viser 210 cas analysables semble raisonnable.
+
+## Description de la population
+
+### Analyse simple
+
+La description de la population concerne :
+
+-   Données démographiques
+-   Critères de gravité de la COVID
+-   Description de l'hospitalisation
+-   Suivi post hospitalisation
+
+Quatre tableaux descriptifs simples seront réalisés. Des graphiques de distribution pourront être réalisés pour les items les plus importants.
+
+### Analyse factorielle
+
+Si le nombre de cas recueillis le permet une analyse factorielle en MCA (Analyse de correspondances multiples) sera réalisée.
+
+*Cette analyse ne pourra être qu'après transformation des variables numériques en catégories & imputation des données manquantes ce qui n'est possible que si ces dernières ne sont pas trop nombreuses.*
+
+## Objectif principal
+
+Le critère principal est la survie à trente jours.
+
+Une analyse simple (test de $\chi^2$ ou de Wilcoxon) sera réalisée pour rechercher d'éventuels facteurs pronostics.
+
+On complétera par une analyse des courbes de survie (test du log-rank) en étudiant les facteurs pronostics mis en évidence.
+
+### Analyse par régression
+
+Une analyse multivariée par régression logistique sera réalisée en y incorporant les toutes les variables ayant une p-value \< 0,20 sur l'analyse monovariée.
+
+Une analyse multivariée des courbes de survie (modèle de Cox) sera réalisée sur les mêmes critères.
+
+## Objectifs secondaires
+
+### Réhospitalisation précoce
+
+Le taux de réhospitalsation précoce sera calculé. Une analyse simple (test de $\chi^2$ ou de Wilcoxon) sera réalisée pour rechercher d'éventuels facteurs pronostics.
+
+### Satisfaction des patients
+
+La satisfaction des patients sera étudié sur un questionnaire de cinq items. Celui-ci n'ayant pas été validé aucun calcul d'un score global ne pourra être réalisé. Un tableau donnant les résultats bruts item par item sera présenté.
+
+## Technique {.appendix}
+
+L'analyse statistique sera réalisée avec le logiciel **R** [@rstat] & divers packages en particulier `tidyverse` [@tidy], `FactoMineR` [@facto], `epiDisplay` [@epid]  & `baseph` [@baseph]. 
+Un dépôt GitHub sera utilisé qui ne contiendra que le code & non les données ou résultats <https://github.com/philippemichel/covambu>.
+
+## Bibliographie
