@@ -28,7 +28,7 @@ class: scrartcl
 classoption: [french]
 papersize: a4paper
 editor: source
-#cite-method: biblatex
+cite-method: biblatex
 bibliography: stat.bib
 license: "CC BY-SA"
 ---

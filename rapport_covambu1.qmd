@@ -1,0 +1,271 @@
+---
+title: "COVAMBU"
+subtitle: "Rapport Statistique -- V1.0"
+author: 
+    - name: "Dr Philippe MICHEL"
+      affiliations:
+        name: "Hôpital NOVO"
+        department: "Unité de Soutien à la Recherche Clinique"
+format: 
+  titlepage-pdf:
+    titlepage: bg-image
+    titlepage-bg-image: "novo_usrc.png"
+    logo-space-after: "0\\baselineskip"
+    documentclass: scrreprt
+    classoption: ["oneside", "open=any, french"]
+    number-sections: true
+    titlepage-footer: "**Dr Céleste LAMBERT**  Service des Pathologies infectieuses et tropicales -- Hôpital NOVO (Site Pontoise)\\newline \\newline Retour précoce des patients atteints de COVID-19 au domicile sous oxygène : Evaluation d’une nouvelle stratégie basée sur le lien ville/hôpital \\newline \\today"
+titlepage-theme:
+    title-fontstyle: ["Huge", "bfseries"]
+    title-color: novo
+    subtitle-color: novo
+    subtitle-fontstyle: ["huge"]
+    logo-size: "0.2\\textheight"
+    vrule-width: "0.1cm"
+    vrule-color: novo
+include-in-header:
+      text: |
+        \usepackage{csquotes}
+        \usepackage{babel}
+        \definecolor{novo}{HTML}{27484b}
+        \usepackage{siunitx}
+        \mathcode`\.="013B 
+jss-pdf:
+    keep-tex: true   
+pdf-engine: lualatex
+keep-tex: true
+number-sections: true
+toc: true
+lof: true
+lot: true
+mainfont: Faune
+mainfontoptions:
+  - Ligatures=TeX
+sansfont: Myriad Pro
+sansfontoptions:
+  - Ligatures=TeX
+fig-cap-location: bottom
+tbl-cap-location: top
+classoption: [french]
+papersize: a4
+editor: source
+bibliography: stat.bib
+cite-method: biblatex
+csl: jama.csl
+#reference-location: margin
+#citation-location: margin
+license: "CC BY-SA"
+---
+# Présentation 
+
+**Recherche non-interventionnelle impliquant la personne humaine**
+
+
+```{r include=FALSE}
+#| label: init
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, cache = FALSE) 
+expx <- FALSE
+classeur <- "covambu1.xls"
+```
+
+```{r}
+#| label: lib
+
+library(baseph)
+library(janitor)
+library(corrplot)
+library(tidyverse)
+library(lubridate)
+library(labelled)
+library(kableExtra)
+library(forestmodel)
+library(epiDisplay)
+library(confintr)
+library(missMDA)
+library(colorspace)
+library(visdat)
+library(gtsummary)
+library(FactoMineR)
+library(factoextra)
+```
+
+```{r}
+
+#| label: import
+nar <- c("", "NA", " ", "A")
+demog <- read_csv("datas/DEMOG.csv", show_col_types = FALSE,  na = nar)
+hosp <- read_csv("datas/SORTIEHOSPIT.csv", show_col_types = FALSE,  na = nar)
+suivi <- read_csv("datas/SUIVI.csv", show_col_types = FALSE,  na = nar)
+satisf <- read_csv2("datas/QUESTSATISF.csv", show_col_types = FALSE,  na = nar)
+tt <- left_join(demog,hosp,by= "SUBJID")
+tt <- left_join(tt,suivi,by= "SUBJID")
+tt <- left_join(tt,satisf,by= "SUBJID")
+tt <- tt |> 
+    mutate_if(is.character, as.factor) |>
+    janitor::clean_names()
+bbnom <- read_csv("datas/bnom.csv")
+var_label(tt) <- bbnom$nom
+tt <- tt |> 
+  dplyr::select(-c(appeldte,naissancedte, remplissdte))
+```
+
+La base de données comporte `r nrow(tt)` cas pour `r ncol(tt)` variables. 300 sujets étaient prévus dans le protocole.
+
+```{r}
+#| label: manq
+#| fig-cap: Données manquantes
+
+tt |> 
+  dplyr::select(c(2,3,5:18,32:34)) |> 
+vis_miss(show_perc_col = TRUE)
+```
+
+```{r}
+
+tt |> 
+  mutate_if(is.factor,as.numeric) |> 
+  dplyr::select(-1) |> 
+  cor(use = "complete.obs") |> 
+  corrplot(diag = FALSE, type = "lower")
+```
+
+# Descriptif
+
+## Démographique
+
+```{r}
+#| label: descdemog
+#| tbl-cap: Tableau descriptif -- Démographique
+
+# options(OutDec = ",") 
+tt |> 
+  dplyr::select(2:16) |> 
+  tbl_summary(missing = "no") |> 
+    modify_header(label ~ " ") %>%
+  bold_labels() |> 
+  add_n() |> 
+  pexptabph(lg = TRUE, exp = expx, nomfich = classeur, nomsheet = "descdemog")
+```
+
+```{r}
+#| label: pyr
+#| fig-cap: Pyramide des âges
+tt$cage<- cut(tt$agec,
+  include.lowest = TRUE,
+  right = FALSE,
+  dig.lab = 4,
+  breaks = c(18, 30, 40, 50, 60, 70, 80, 90, 100)
+)
+      ggplot(tt) +
+      aes(x = cage, fill = sex) +
+      geom_bar(data = subset(tt, sex == "Féminin"),
+               aes(y = ..count.. * (-1))) +
+      geom_bar(data = subset(tt, sex == "Masculin")) +
+      geom_hline(yintercept = 0)+
+      scale_fill_manual(values = c("pink", "light blue")) +
+      coord_flip() +
+      labs(title = "Pyramide des âges") +
+      theme_light() +
+      theme(
+        plot.title = element_text(size = 16, face = "bold"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x =  element_blank(),
+        axis.text.y =  element_text(size = 12),
+        legend.position = "right",
+        legend.title = element_blank()
+      )
+```
+
+
+## Hospitalisation
+
+```{r}
+#| label: deschosp
+#| tbl-cap: Tableau descriptif -- Hospitalisation
+
+# options(OutDec = ",") 
+tt |> 
+  dplyr::select(17:22) |> 
+  tbl_summary(missing = "no") |> 
+    modify_header(label ~ " ") %>%
+  bold_labels() |> 
+  add_n() |> 
+  pexptabph(lg = TRUE, exp = expx, nomfich = classeur, nomsheet = "descdemog")
+```
+
+
+# Ojectif principal
+
+*Décrire l’évolution des patients atteints de COVID-19 ayant bénéficié d’un retour précoce au domicile sous oxygène organisé par le PRADO*
+
+**Critère principal**
+
+*Évaluation de la mortalité (toute cause) à 30 jours de la sortie d’hospitalisation (J30)*
+
+```{r}
+#| label: crit1
+#| tbl-cap: Mortailté à 30jours
+
+tt |> 
+  dplyr::select(26) |> 
+  tbl_summary(missing = "no") |> 
+    modify_header(label ~ " ") %>%
+  bold_labels() |> 
+  add_n() |> 
+  gexptabph(lg = TRUE, exp = expx, nomfich = classeur, nomsheet = "crit1")
+```
+
+Vu le très faible nombre de patients décédés il est impossible de faire la moindre étude sur d'éventuels facteurs pouvant influer la mortalité.
+
+# Objectifs secondaires
+
+## Objectif 1
+*Évaluation du risque de ré-hospitalisations précoces des patients suite à leur retour au domicile.*
+
+**Critère de jugement** Nombre de ré-hospitalisations à 7 jours de la sortie d’hospitalisation (J7)
+
+```{r}
+#| label: second1
+#| tbl-cap: Suivi des patients
+
+# options(OutDec = ",") 
+tt |> 
+  dplyr::select(23:25,27:28) |> 
+  tbl_summary(missing = "no") |> 
+    modify_header(label ~ " ") %>%
+  bold_labels() |> 
+  add_n() |> 
+  gexptabph(lg = FALSE, exp = expx, nomfich = classeur, nomsheet = "second1")
+```
+
+
+## Objectif secondaire 2
+
+*Évaluation de la satisfaction des patients concernant leur prise en charge et leur retour au domicile.*
+
+**Critère de jugement** Évaluation de la satisfaction des patients concernant leur prise en charge et leur retour au domicile.
+
+
+
+```{r}
+#| label: descsatisf
+#| tbl-cap: Tableau descriptif -- Questionnaire de satisfaction
+
+# options(OutDec = ",") 
+tt |> 
+  dplyr::select(34:39) |> 
+  tbl_summary(missing = "no") |> 
+    modify_header(label ~ " ") %>%
+  bold_labels() |> 
+  add_n() |> 
+  gexptabph(lg = FALSE, exp = expx, nomfich = classeur, nomsheet = "descdemog")
+```
+
+
+# Technique
+
+Les données ont été décrites en médiane avec les quartiles pour les données numériques, en nombre avec le pourcentage pour les données discrètes. Vu le faible nombre de cas & en particulier le très faible nombre de décès aucune de analyses prévues n' a pu être réalisée. 
+
+L’analyse statistique a été réalisée avec le logiciel **R** [@rstat] & divers packages en particulier `tidyverse` [@tidy], `epiDisplay` [@epid]  & `baseph` [@baseph]. Un dépôt GitHub a été utilisé
+qui ne contient que le code & non les données ou résultats <https://github.com/philippemichel/covambu>.
