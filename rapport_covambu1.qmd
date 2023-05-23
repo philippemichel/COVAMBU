@@ -64,7 +64,7 @@ license: "CC BY-SA"
 ```{r include=FALSE}
 #| label: init
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, cache = FALSE) 
-expx <- FALSE
+expx <- TRUE
 classeur <- "covambu1.xls"
 ```
 
@@ -101,7 +101,7 @@ tt <- left_join(demog,hosp,by= "SUBJID")
 tt <- left_join(tt,suivi,by= "SUBJID")
 tt <- left_join(tt,satisf,by= "SUBJID")
 tt <- tt |> 
-    mutate_if(is.character, as.factor) |>
+    mutate(across(is.character, as.factor)) |>
     janitor::clean_names()
 bbnom <- read_csv("datas/bnom.csv")
 var_label(tt) <- bbnom$nom
@@ -191,7 +191,7 @@ tt |>
     modify_header(label ~ " ") %>%
   bold_labels() |> 
   add_n() |> 
-  pexptabph(lg = TRUE, exp = expx, nomfich = classeur, nomsheet = "descdemog")
+  pexptabph(lg = TRUE, exp = expx, nomfich = classeur, nomsheet = "deschosp")
 ```
 
 
@@ -259,7 +259,7 @@ tt |>
     modify_header(label ~ " ") %>%
   bold_labels() |> 
   add_n() |> 
-  gexptabph(lg = FALSE, exp = expx, nomfich = classeur, nomsheet = "descdemog")
+  gexptabph(lg = FALSE, exp = expx, nomfich = classeur, nomsheet = "descsatisf")
 ```
 
 
