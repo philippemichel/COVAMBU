@@ -8,5 +8,8 @@
 
 ## Planning
 
-24/11/2022 Plan d'analyse
-17/05/2023 Rapport d'analyse V1.0
+**24/11/2022 Plan d'analyse**
+
+**17/05/2023 Rapport d'analyse v1.0**
+
+**25/05/2023 Rapport d'analyse v2.0** avec graphiques
