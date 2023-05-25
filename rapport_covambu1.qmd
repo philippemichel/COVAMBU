@@ -1,6 +1,6 @@
 ---
 title: "COVAMBU"
-subtitle: "Rapport Statistique -- V1.0"
+subtitle: "Rapport Statistique -- v2.0"
 author: 
     - name: "Dr Philippe MICHEL"
       affiliations:
@@ -64,9 +64,12 @@ license: "CC BY-SA"
 ```{r include=FALSE}
 #| label: init
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, cache = FALSE) 
-expx <- TRUE
-classeur <- "covambu1.xls"
+expx <- FALSE
+classeur <- "covambu2.xls"
 ```
+
+
+
 
 ```{r}
 #| label: lib
@@ -102,10 +105,11 @@ tt <- left_join(tt,suivi,by= "SUBJID")
 tt <- left_join(tt,satisf,by= "SUBJID")
 tt <- tt |> 
     mutate(across(is.character, as.factor)) |>
-    janitor::clean_names()
-bbnom <- read_csv("datas/bnom.csv")
+    janitor::clean_names() |> 
+    mutate(corticoduree = as.factor(corticoduree))
+bbnom <- read_csv2("datas/bnom.csv")
 var_label(tt) <- bbnom$nom
-tt <- tt |> 
+tt <- tt |>  
   dplyr::select(-c(appeldte,naissancedte, remplissdte))
 ```
 
@@ -121,12 +125,15 @@ vis_miss(show_perc_col = TRUE)
 ```
 
 ```{r}
-
+#| label: corr
+#| fig-cap: Table de corrélation
+#| fig-width: 100
+#| fig-asp: 1
 tt |> 
   mutate_if(is.factor,as.numeric) |> 
   dplyr::select(-1) |> 
   cor(use = "complete.obs") |> 
-  corrplot(diag = FALSE, type = "lower")
+  corrplot(diag = FALSE, type = "lower", tl.cex = 12)
 ```
 
 # Descriptif
@@ -136,6 +143,7 @@ tt |>
 ```{r}
 #| label: descdemog
 #| tbl-cap: Tableau descriptif -- Démographique
+#| cache: true
 
 # options(OutDec = ",") 
 tt |> 
@@ -150,6 +158,7 @@ tt |>
 ```{r}
 #| label: pyr
 #| fig-cap: Pyramide des âges
+
 tt$cage<- cut(tt$agec,
   include.lowest = TRUE,
   right = FALSE,
@@ -177,14 +186,56 @@ tt$cage<- cut(tt$agec,
       )
 ```
 
+```{r}
+#| label: figrisq
+#| fig-cap: Facteurs de risque
+
+nonf <- bbnom$nom[6:18]
+
+tt |> 
+  dplyr::select(4:16) |> 
+  pivot_longer(1:13) |> 
+  dplyr::filter(value == "Oui") |> 
+  mutate(risc = if_else(name == "riskfactoron","0","1")) |> 
+   mutate(name = factor(name, levels = names(tt)[4:16])) |> 
+  ggplot() +
+  aes(x = name, fill =risc) +
+  geom_bar(stat = "count") +
+      labs(title = "Facteurs de risque",
+         y = "n",
+         caption = "Facteurs de risque",
+)+
+  scale_x_discrete(labels = nonf) +
+    theme_light() +
+    scale_fill_discrete_qualitative(palette = "Dynamic") +
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      plot.subtitle = element_text(size = 12),
+      axis.title.x = element_blank(),
+      legend.title = element_blank(),
+      axis.title.y = element_text(
+        size = 12,
+        angle = 0,
+        vjust = .5
+      ),
+      axis.text.x = element_text(
+        size = 11 ,
+        angle = 60,
+        hjust = 1
+      ),
+      axis.text.y = element_text(size = 12),
+      legend.position = "none"
+    )
+```
+
 
 ## Hospitalisation
 
 ```{r}
 #| label: deschosp
 #| tbl-cap: Tableau descriptif -- Hospitalisation
+#| #| cache: true
 
-# options(OutDec = ",") 
 tt |> 
   dplyr::select(17:22) |> 
   tbl_summary(missing = "no") |> 
@@ -194,8 +245,97 @@ tt |>
   pexptabph(lg = TRUE, exp = expx, nomfich = classeur, nomsheet = "deschosp")
 ```
 
+```{r}
+#| label: figo2s
+#| fig-cap: Oxygénothérapie à la sortie d'hospitalisation
+titx <- "Oxygénothérapie à la sortie d'hospitalisation"
+tt |> 
+  mutate(o2sortienbre = as.factor(o2sortienbre)) |> 
+  ggplot() +
+  aes(x = o2sortienbre, fill = o2sortienbre) +
+  geom_bar(stat = "count") +
+      labs(title = titx,
+        x = "L/min",
+         y = "n",
+         caption = titx
+) +
+    theme_light() +
+    scale_fill_discrete_qualitative(palette = "Warm") +
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      plot.subtitle = element_text(size = 12),
+      axis.title.x = element_text(size = 12),
+      legend.title = element_blank(),
+      axis.title.y = element_text(
+        size = 12,
+        angle = 0,
+        vjust = .5
+      ),
+      axis.text.x = element_text(
+        size = 12
+      ),
+      axis.text.y = element_text(size = 12),
+      legend.position = "none"
+    )
+```
 
-# Ojectif principal
+```{r}
+#| label: figdhosp
+#| fig-cap: Durée d'hospitalisation
+#| fig-asp: 1
+titx <- "Durée d'hospitalisation"
+mj <- median(tt$hospitduree, na.rm = TRUE)
+tt |> 
+  mutate(hospitduree = as.factor(hospitduree)) |> 
+  ggplot() +
+  aes(x = hospitduree, fill = hospitduree) +
+  geom_bar(stat = "count") +
+      labs(title = titx,
+           subtitle = "(médiane)",
+        x = "Jours",
+         y = "n",
+         caption = titx
+) +
+  geom_vline(xintercept = mj, linetype = 2) +
+  scale_fill_discrete_qualitative(palette = "Warm") +
+    theme_light() +
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      plot.subtitle = element_text(size = 12),
+      axis.title.x = element_text(size = 12),
+      legend.title = element_blank(),
+      axis.title.y = element_text(
+        size = 12,
+        angle = 0,
+        vjust = .5
+      ),
+      axis.text.x = element_text(
+        size = 12
+      ),
+      axis.text.y = element_text(size = 12),
+      legend.position = "none"
+    )
+```
+
+\clearpage
+
+## Corticothérapie
+
+```{r}
+#| label: desccorti
+#| tbl-cap: Tableau descriptif -- Corticothérapie
+#| cache: true
+
+tt |> 
+  dplyr::select(28:33) |> 
+  tbl_summary(missing = "no") |> 
+    modify_header(label ~ " ") %>%
+  bold_labels() |> 
+  add_n() |> 
+  pexptabph(lg = TRUE, exp = expx, nomfich = classeur, nomsheet = "deschosp")
+```
+
+# Objectif principal
 
 *Décrire l’évolution des patients atteints de COVID-19 ayant bénéficié d’un retour précoce au domicile sous oxygène organisé par le PRADO*
 
@@ -206,6 +346,7 @@ tt |>
 ```{r}
 #| label: crit1
 #| tbl-cap: Mortailté à 30jours
+#| #| cache: true
 
 tt |> 
   dplyr::select(26) |> 
@@ -227,18 +368,94 @@ Vu le très faible nombre de patients décédés il est impossible de faire la m
 
 ```{r}
 #| label: second1
-#| tbl-cap: Suivi des patients
+#| tbl-cap: Réhospitalisations
+#| #| cache: true
 
-# options(OutDec = ",") 
 tt |> 
-  dplyr::select(23:25,27:28) |> 
+  dplyr::select(rehospit7on,rehospit30on) |> 
   tbl_summary(missing = "no") |> 
     modify_header(label ~ " ") %>%
   bold_labels() |> 
   add_n() |> 
-  gexptabph(lg = FALSE, exp = expx, nomfich = classeur, nomsheet = "second1")
+  pexptabph(lg = FALSE, exp = expx, nomfich = classeur, nomsheet = "second1")
 ```
 
+
+```{r}
+#| label: factrehosp
+#| tbl-cap: Réhospitalisations - facteurs de risque
+#| cache: true
+
+tt |> 
+  dplyr::select(2:4,6,12,14,16:22,23) |> 
+  tbl_summary(missing = "no", by = rehospit7on) |> 
+  modify_header(label ~ " ") %>%
+  bold_labels() |> 
+  add_n() |> 
+  add_p() |> 
+  bold_p() |> 
+  gexptabph(lg = FALSE, exp = expx, nomfich = classeur, nomsheet = "factrehosp")
+```
+
+```{r}
+#| label: factrehospmulti
+#| fig-cap: Réhospitalisations - facteurs de risque
+
+glm(rehospit7on ~ agec + respiron + hospitduree + 
+    o2sortienbre + fievreon, data = tt, family = "binomial") |> 
+forest_model(factor_separate_line = TRUE)
+```
+
+L'âge, les antécédents respiratoire & la fièvre à la sortie semblent être des facteurs de risque de réhospitalisation. Une durée d'hospitalisation longue semble être protectrice. 
+
+```{r}
+#| label: figfactrisq
+#| fig-cap: Facteurs de risque de réhospitalisation
+#| 
+atcd <- c("Âge > 65 ans", "Cancer","Maladie cardiologique","Diabète","HTA","Immunodépression", "Insuffisance rénale","Maladie neuromusculaire","Obésité", "Maladie respiratoire")
+#
+zz <- tt |> 
+  dplyr:: select(5:16, 23) |> 
+  pivot_longer(1:12) |> 
+  dplyr::filter(value == "Oui") 
+  aa <- table(zz$name,zz$rehospit7on)
+  aa <- as.data.frame(aa)
+rez <- table(tt$rehospit30on)
+aa$den <- c(rep(rez[[1]],10),rep(rez[[2]],10))
+as_tibble(aa) |> 
+  mutate(percentx = 100*Freq/den) |> 
+ggplot() +
+  aes(x = Var1, y = percentx, fill = Var2) +
+  geom_col(position = "dodge") +
+  labs(title = "Facteurs de risque de réhospitalisation",
+       subtitle = "",
+       x = "",
+       y = "%",
+       fill = "Réhospitalisation") +
+  theme_light() +
+  colorspace::scale_fill_discrete_qualitative(palette = "Dynamic") +
+  scale_x_discrete(labels = atcd) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_blank(),
+    axis.title.x = element_blank(),
+    legend.title =  element_text(size = 12),
+    axis.title.y = element_text(
+      size = 12,
+      angle = 0,
+      vjust = .5
+    ),
+    axis.text.x = element_text(
+      size = 12 ,
+      angle = 30,
+      hjust =1
+    ),
+    axis.text.y = element_text(size = 12),
+    legend.position = "right"
+  )
+```
+
+\clearpage
 
 ## Objectif secondaire 2
 
@@ -263,9 +480,17 @@ tt |>
 ```
 
 
+
+
+
 # Technique
 
-Les données ont été décrites en médiane avec les quartiles pour les données numériques, en nombre avec le pourcentage pour les données discrètes. Vu le faible nombre de cas & en particulier le très faible nombre de décès aucune de analyses prévues n' a pu être réalisée. 
+Les données ont été décrites en médiane avec les quartiles pour les données numériques, en nombre avec le pourcentage pour les données discrètes. Vu le faible nombre de cas & en particulier le très faible nombre de décès aucune de analyses prévues n' a pu être réalisée pour ce thème. 
 
-L’analyse statistique a été réalisée avec le logiciel **R** [@rstat] & divers packages en particulier `tidyverse` [@tidy], `epiDisplay` [@epid]  & `baseph` [@baseph]. Un dépôt GitHub a été utilisé
+Pour l'analyse des réhospitalistion une analyse simple item par item a d'abord été réalisée.  Les données discrètes ont été présentés en pourcentage puis comparées par un test exact de Fisher. Les données numériques ont été présentées par leur médiane & les quartiles puis comparées par le test non paramétrique de Wilcoxon. L'analyse multivarié a été menée en régression logistique. dans un premier temps on a incorporé dans l'analyse  tous les facteurs ayant une p-value < 20 %. Une interaction entre deux variables a fait éliminer la variable `hospitjrsnbre`. Ensuite une recherche du meilleur modèle par un step-by-step descendant a été réalisée. 
+
+
+L’analyse statistique a été réalisée avec le logiciel **R** [@rstat] & divers packages en particulier `tidyverse` [@tidy], `epiDisplay` [@epid]  & `baseph` [@baseph]. 
+
+Un dépôt GitHub a été utilisé
 qui ne contient que le code & non les données ou résultats <https://github.com/philippemichel/covambu>.
